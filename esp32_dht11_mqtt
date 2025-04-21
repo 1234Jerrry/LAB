@@ -1,0 +1,33 @@
+#include <WiFi.h>
+#include <PubSubClient.h>
+#include "DHT.h"
+
+#define DHTPIN 4
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
+
+const char* ssid = "YOUR_SSID";
+const char* password = "YOUR_PASSWORD";
+const char* mqtt_server = "broker.emqx.io";
+
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+void setup() {
+  Serial.begin(115200);
+  dht.begin();
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) delay(1000);
+  client.setServer(mqtt_server, 1883);
+}
+
+void loop() {
+  if (!client.connected()) client.connect("ESP32Client");
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();
+  if (!isnan(h) && !isnan(t)) {
+    String payload = "{\"temp\":" + String(t) + ", \"humidity\":" + String(h) + "}";
+    client.publish("esp32/dht11", payload.c_str());
+  }
+  delay(5000);
+}

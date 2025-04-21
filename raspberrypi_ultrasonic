@@ -1,0 +1,37 @@
+import time
+import json
+import paho.mqtt.client as mqtt
+from gpiozero import DistanceSensor
+# MQTT Configuration
+mqtt_broker = "broker.emqx.io" # e.g., "mqtt.eclipse.org"
+mqtt_port = 1883
+mqtt_topic = "quantanics/ultrasonic" # must need to change topics based on yours task
+# Initialize the ultrasonic sensor (using GPIO pins 17 and 27 as an example)
+sensor = DistanceSensor(echo=24, trigger=23)
+# MQTT Setup
+client = mqtt.Client()
+client.connect(mqtt_broker, mqtt_port, 60)
+def send_data_to_mqtt(distance):
+# Create JSON data
+data = {
+"distance": distance
+}
+# Convert to JSON
+payload = json.dumps(data)
+# Publish to MQTT topic
+client.publish(mqtt_topic, payload)
+print(f"Sent data: {payload}")
+# Main loop
+try:
+while True:
+# Wait for a distance reading
+distance = sensor.distance * 100 # Convert to cm
+print(f"Distance: {distance:.2f} cm")
+# Send the data to MQTT
+send_data_to_mqtt(distance)
+# Wait for a second before the next reading
+time.sleep(1)
+except KeyboardInterrupt:
+print("Program interrupted")
+finally:
+client.disconnect()

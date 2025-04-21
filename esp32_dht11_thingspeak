@@ -1,0 +1,32 @@
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include "DHT.h"
+
+#define DHTPIN 4
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
+
+const char* ssid = "YOUR_SSID";
+const char* password = "YOUR_PASSWORD";
+const char* server = "http://api.thingspeak.com/update?api_key=YOUR_API_KEY";
+
+void setup() {
+  Serial.begin(115200);
+  dht.begin();
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) delay(1000);
+}
+
+void loop() {
+  float t = dht.readTemperature();
+  float h = dht.readHumidity();
+  if (WiFi.status() == WL_CONNECTED && !isnan(t) && !isnan(h)) {
+    HTTPClient http;
+    String url = server + "&field1=" + String(t, 2) + "&field2=" + String(h, 2);
+    http.begin(url);
+    http.GET();
+    http.end();
+  }
+  delay(15000);
+}
+

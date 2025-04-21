@@ -1,0 +1,43 @@
+#include <WiFi.h>
+#include <HTTPClient.h>
+
+#define SMOKE_SENSOR_PIN 34  // Analog-capable pin (ADC1)
+
+// Replace with your network credentials
+const char* ssid = "YOUR_SSID";
+const char* password = "YOUR_PASSWORD";
+
+// Replace with your ThingSpeak Write API Key
+const char* server = "http://api.thingspeak.com/update?api_key=YOUR_API_KEY";
+
+void setup() {
+  Serial.begin(115200);
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Connecting to WiFi...");
+  }
+
+  Serial.println("WiFi connected.");
+}
+
+void loop() {
+  int smokeValue = analogRead(SMOKE_SENSOR_PIN);  // Read analog value (0–4095)
+
+  Serial.print("Smoke Sensor Value: ");
+  Serial.println(smokeValue);
+
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+
+    // Send smoke value to ThingSpeak as field1
+    String url = server + String("&field1=") + String(smokeValue);
+    http.begin(url);
+    http.GET();  
+    http.end(); 
+  }
+
+  delay(15000);  // Wait 15 seconds
+}
+

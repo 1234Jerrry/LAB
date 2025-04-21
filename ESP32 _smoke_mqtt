@@ -1,0 +1,39 @@
+#include <WiFi.h>
+#include <PubSubClient.h>
+
+#define SMOKE_SENSOR_PIN 34  // ADC1 input-only pin
+
+const char* ssid = "YOUR_SSID";
+const char* password = "YOUR_PASSWORD";
+const char* mqtt_server = "broker.emqx.io";
+
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+void setup() {
+  Serial.begin(115200);
+
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+  }
+
+  client.setServer(mqtt_server, 1883);
+}
+
+void loop() {
+  if (!client.connected()) {
+    client.connect("ESP32SmokeClient");
+  }
+
+  int smokeValue = analogRead(SMOKE_SENSOR_PIN);
+  String payload = "{\"smoke\":" + String(smokeValue) + "}";
+
+  client.publish("esp32/smoke", payload.c_str());
+
+  Serial.print("Smoke sensor value: ");
+  Serial.println(smokeValue);
+
+  delay(5000); // Read and send every 5 seconds
+}
+

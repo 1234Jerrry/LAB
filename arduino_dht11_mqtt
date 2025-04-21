@@ -1,0 +1,76 @@
+#include <SoftwareSerial.h>
+#include <DHT.h>
+
+#define DHTPIN 4
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
+
+SoftwareSerial espSerial(2, 3); // RX, TX (ESP TX → D2, RX ← D3)
+
+String ssid = "YOUR_SSID";
+String password = "YOUR_PASSWORD";
+String mqttServer = "broker.emqx.io";  // Or use broker.hivemq.com, test.mosquitto.org
+String topic = "arduino/dht11";
+
+void setup() {
+  Serial.begin(9600);
+  espSerial.begin(9600);
+  dht.begin();
+  
+  connectWiFi();
+  connectMQTT();
+}
+
+void loop() {
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();
+  
+  if (isnan(h) || isnan(t)) {
+    Serial.println("Failed to read from DHT sensor!");
+    return;
+  }
+
+  String payload = "{\"temperature\":" + String(t, 1) + ",\"humidity\":" + String(h, 1) + "}";
+  Serial.println("Publishing: " + payload);
+  
+  sendMQTTPublish(topic, payload);
+  delay(10000);
+}
+
+void connectWiFi() {
+  espSerial.println("AT");
+  delay(1000);
+
+  espSerial.println("AT+CWMODE=1");
+  delay(1000);
+
+  espSerial.print("AT+CWJAP=\"");
+  espSerial.print(ssid);
+  espSerial.print("\",\"");
+  espSerial.print(password);
+  espSerial.println("\"");
+  delay(6000);
+}
+
+void connectMQTT() {
+  String cmd = "AT+CIPSTART=\"TCP\",\"" + mqttServer + "\",1883";
+  espSerial.println(cmd);
+  delay(2000);
+}
+
+void sendMQTTPublish(String topic, String message) {
+  String mqttPacket = String((char)0x30);  // Publish packet
+  int len = 2 + topic.length() + message.length();
+  mqttPacket += String((char)len);
+  mqttPacket += (char)0x00;
+  mqttPacket += (char)topic.length();
+  mqttPacket += topic;
+  mqttPacket += message;
+
+  String sendCmd = "AT+CIPSEND=" + String(mqttPacket.length());
+  espSerial.println(sendCmd);
+  delay(1000);
+  espSerial.print(mqttPacket);
+  delay(1000);
+}
+
